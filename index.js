@@ -22,16 +22,28 @@ module.exports = Harvest = function (opts) {
 
     this.subdomain = opts.subdomain;
     this.host = "https://" + this.subdomain + ".harvestapp.com";
+
+    this.redirect_uri = opts.redirect_uri;
     this.email = opts.email;
     this.password = opts.password;
     this.identifier = opts.identifier;
     this.secret = opts.secret;
     this.user_agent = opts.user_agent;
     this.debug = opts.debug || false;
+    this.access_token;
 
-    var restService = restler.service(function (u, p) {
-        this.defaults.username = u;
-        this.defaults.password = p;
+    var restService = restler.service(function (u, p, t) {
+        if (u) {
+          this.defaults.username = u;
+        }
+        if (p) {
+          this.defaults.password = p;
+        }
+        if (t) {
+          this.defaults.access_token = t;
+        }
+
+        console.log("Defaults set to", this.defaults);
     }, {
         baseURL: self.host
     }, {
@@ -41,17 +53,6 @@ module.exports = Harvest = function (opts) {
             }
 
             var opts = {};
-            opts.headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            };
-
-            if (typeof data !== 'undefined') {
-                if (typeof data === 'object') {
-                    // restler uses url encoding to transmit data
-                    // url encoding does not support data types
-                    data = JSON.stringify(data);
-                    opts.headers['Content-Length'] = data.length;
                 } else {
                     opts.headers['Content-Length'] = data.length;
                 }
@@ -108,6 +109,40 @@ module.exports = Harvest = function (opts) {
             cb(err, data);
         });
     };
+
+
+    this.getAccessTokenURL = function() {
+      return this.host
+        + "/oauth2/authorize?client_id=" + this.identifier
+        + "&redirect_uri=" + encodeURIComponent(this.redirect_uri)
+        + "&response_type=code";
+    }
+
+    this.parseAccessToken = function(access_code, cb) {
+      var self = this;
+
+      this.access_code = access_code;
+      options = {
+        "code":          this.access_code,
+        "client_id":     this.identifier,
+        "client_secret": this.secret,
+        "redirect_uri":  this.redirect_uri,
+        "grant_type":    "authorization_code"
+      }
+
+      restler.post(this.host + '/oauth2/token', {
+        data: options
+      }).on('complete', function(response) {
+        console.log(response.access_token);
+        console.log(response.refresh_token);
+
+        self.access_token = response.access_token;
+
+        self.service = new restService(self.email, self.passport, self.access_token);
+
+        cb(self.access_token);
+      });
+    }
 
     this.service = new restService(this.email, this.password);
 
