@@ -53,6 +53,17 @@ module.exports = Harvest = function (opts) {
             }
 
             var opts = {};
+            opts.headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+
+            if (typeof data !== 'undefined') {
+                if (typeof data === 'object') {
+                    // restler uses url encoding to transmit data
+                    // url encoding does not support data types
+                    data = JSON.stringify(data);
+                    opts.headers['Content-Length'] = data.length;
                 } else {
                     opts.headers['Content-Length'] = data.length;
                 }
@@ -60,7 +71,7 @@ module.exports = Harvest = function (opts) {
                 opts.headers['Content-Length'] = 0;
             }
 
-            opts.data = data;
+            opts.data = data
             switch (type) {
             case 'get':
                 return this.get(url, opts);
@@ -133,9 +144,7 @@ module.exports = Harvest = function (opts) {
       restler.post(this.host + '/oauth2/token', {
         data: options
       }).on('complete', function(response) {
-        console.log(response.access_token);
-        console.log(response.refresh_token);
-
+        console.log(response);
         self.access_token = response.access_token;
 
         self.service = new restService(self.email, self.passport, self.access_token);
