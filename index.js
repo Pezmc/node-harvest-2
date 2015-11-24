@@ -30,7 +30,7 @@ module.exports = Harvest = function (opts) {
     this.secret = opts.secret;
     this.user_agent = opts.user_agent;
     this.debug = opts.debug || false;
-    this.access_token;
+    this.access_token = opts.access_token;
 
     var restService = restler.service(function (u, p, t) {
         if (u) {
@@ -40,7 +40,7 @@ module.exports = Harvest = function (opts) {
           this.defaults.password = p;
         }
         if (t) {
-          this.defaults.access_token = t;
+          this.access_token = t;
         }
 
         console.log("Defaults set to", this.defaults);
@@ -48,6 +48,10 @@ module.exports = Harvest = function (opts) {
         baseURL: self.host
     }, {
         run: function (type, url, data) {
+            if(self.access_token) {
+              url = url + "?access_token=" + self.access_token;
+            }
+
             if (self.debug) {
                 console.log('run', type, url, data);
             }
@@ -72,6 +76,9 @@ module.exports = Harvest = function (opts) {
             }
 
             opts.data = data
+
+            console.log('Sending to Harvest:', opts.data)
+
             switch (type) {
             case 'get':
                 return this.get(url, opts);
@@ -153,7 +160,7 @@ module.exports = Harvest = function (opts) {
       });
     }
 
-    this.service = new restService(this.email, this.password);
+    this.service = new restService(this.email, this.password, this.access_token);
 
     this.client = {
         get: function (url, data, cb) {
