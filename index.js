@@ -77,7 +77,7 @@ module.exports = Harvest = function (opts) {
 
             opts.data = data
 
-            console.log('Sending to Harvest:', opts.data)
+            console.log('Sending to Harvest:', opts.data, self.host)
 
             switch (type) {
             case 'get':
@@ -109,7 +109,7 @@ module.exports = Harvest = function (opts) {
             var err;
 
             if (self.debug) {
-                console.log('complete', util.inspect(data, false, 10));
+                console.log('complete api request', util.inspect(data, false, 10));
             }
 
             err = null;
@@ -120,8 +120,13 @@ module.exports = Harvest = function (opts) {
 
             if (data instanceof Error || !res || res.statusCode > 399 || data === "Authentication failed for API request.") {
                 err = data;
-                data = {};
-                return cb(err);
+                data = {location: res.headers.location};
+
+                return cb(err, data);
+            }
+
+            if (res.headers.location) {
+              data.location = res.headers.location;
             }
 
             cb(err, data);
@@ -151,7 +156,6 @@ module.exports = Harvest = function (opts) {
       restler.post(this.host + '/oauth2/token', {
         data: options
       }).on('complete', function(response) {
-        console.log(response);
         self.access_token = response.access_token;
 
         self.service = new restService(self.email, self.passport, self.access_token);
